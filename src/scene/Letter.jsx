@@ -23,7 +23,7 @@ function Quarter({ slice, front, back, position }) {
   const geos = useMemo(() => [quarter(u0, v0, u1, v1), quarter(1 - u1, v0, 1 - u0, v1)], [u0, v0, u1, v1])
   return (
     <group position={position}>
-      <mesh geometry={geos[0]} material={front} castShadow receiveShadow />
+      <mesh geometry={geos[0]} material={front} castShadow />
       <mesh geometry={geos[1]} material={back} rotation={[0, Math.PI, 0]} />
     </group>
   )

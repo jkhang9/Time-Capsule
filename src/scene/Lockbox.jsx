@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,11 +8,21 @@ import LedTimer from './LedTimer.jsx'
 
 const ENAMEL = '#3f7f78'
 const STEEL = '#b8b8b2'
+const BOX_Y = 0.5
+const LID_TOP = 0.652
 
-export default function Lockbox({ opensAt }) {
+// deposit slot on the lid, in world coordinates (slot runs along x)
+export const SLOT = { x: -0.32, y: BOX_Y + LID_TOP, z: -0.3 }
+
+export default function Lockbox({ opensAt, thunk = 0 }) {
   const group = useRef()
-  const [nudge, setNudge] = useState(0)
+  const nudge = useRef(0)
   const [complaint, setComplaint] = useState(0)
+
+  // something just landed inside
+  useEffect(() => {
+    if (thunk) nudge.current = 0.6
+  }, [thunk])
 
   const scuff = useMemo(() => makeScuffMap(), [])
   const stickers = useMemo(() => makeStickerMap(), [])
@@ -38,18 +48,19 @@ export default function Lockbox({ opensAt }) {
   useFrame((_, dt) => {
     if (!group.current) return
     const t = performance.now() / 1000
-    group.current.rotation.z = Math.sin(t * 38) * nudge * 0.02
-    group.current.position.x = Math.sin(t * 31) * nudge * 0.01
-    if (nudge > 0) setNudge(Math.max(0, nudge - dt * 2.4))
+    const n = nudge.current
+    group.current.rotation.z = Math.sin(t * 38) * n * 0.02
+    group.current.position.x = Math.sin(t * 31) * n * 0.01
+    nudge.current = Math.max(0, n - dt * 2.4)
   })
 
   const early = () => {
-    setNudge(1)
+    nudge.current = 1
     setComplaint((c) => c + 1)
   }
 
   return (
-    <group ref={group} position={[0, 0.5, 0]}>
+    <group ref={group} position={[0, BOX_Y, 0]}>
       {/* body */}
       <RoundedBox args={[1.7, 0.72, 1.05]} radius={0.04} smoothness={4} position={[0, 0, 0]} castShadow receiveShadow material={enamel} />
       {/* lid */}
@@ -79,6 +90,16 @@ export default function Lockbox({ opensAt }) {
           polygonOffsetFactor={-2}
         />
       </mesh>
+      {/* deposit slot: things go in, nothing comes out */}
+      <group position={[SLOT.x, LID_TOP, SLOT.z]}>
+        <mesh material={steel} castShadow receiveShadow>
+          <boxGeometry args={[0.62, 0.014, 0.13]} />
+        </mesh>
+        <mesh position={[0, 0.0075, 0]}>
+          <boxGeometry args={[0.56, 0.002, 0.05]} />
+          <meshBasicMaterial color="#070504" />
+        </mesh>
+      </group>
       {/* folding handle */}
       <group position={[0, 0.66, -0.44]}>
         {[-0.3, 0.3].map((x) => (

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -43,7 +43,7 @@ function Hub({ hubRef, tapeRef, x, white }) {
 
 // A procedural compact cassette. getProgress() gives how much tape has moved to the
 // right-hand reel (0..1); getSpin() gives reel direction and speed.
-const Cassette = forwardRef(function Cassette({ name, shell = '#ef7fa8', stripe = '#ff5f8f', getProgress, getSpin, ...props }, ref) {
+export default function Cassette({ name, shell = '#ef7fa8', stripe = '#ff5f8f', getProgress, getSpin }) {
   const label = useMemo(() => makeLabel(), [])
   useEffect(() => {
     const redraw = () => {
@@ -92,7 +92,7 @@ const Cassette = forwardRef(function Cassette({ name, shell = '#ef7fa8', stripe 
   })
 
   return (
-    <group ref={ref} {...props}>
+    <group>
       <RoundedBox args={[CASSETTE.w, CASSETTE.h, CASSETTE.d]} radius={0.012} smoothness={3} material={shellMat} castShadow />
       <Hub hubRef={leftHub} tapeRef={leftTape} x={-HUB_X} white={white} />
       <Hub hubRef={rightHub} tapeRef={rightTape} x={HUB_X} white={white} />
@@ -118,6 +118,4 @@ const Cassette = forwardRef(function Cassette({ name, shell = '#ef7fa8', stripe 
       ))}
     </group>
   )
-})
-
-export default Cassette
+}

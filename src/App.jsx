@@ -4,44 +4,120 @@ import { CameraShake, Environment, Lightformer, OrbitControls } from '@react-thr
 import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
 import Lockbox from './scene/Lockbox.jsx'
 import Room from './scene/Room.jsx'
-import TapeStation from './scene/TapeStation.jsx'
+import Station from './scene/Station.jsx'
+import Cassette, { CASSETTE } from './scene/Cassette.jsx'
+import Letter, { LETTER_PACKET_H } from './scene/Letter.jsx'
+import Postcard, { POSTCARD } from './scene/Postcard.jsx'
+import Polaroid, { POLAROID } from './scene/Polaroid.jsx'
 import CameraRig, { POSES } from './scene/CameraRig.jsx'
-import Deck from './Deck.jsx'
+import Deck from './panels/Deck.jsx'
+import LetterPanel from './panels/LetterPanel.jsx'
+import PostcardPanel from './panels/PostcardPanel.jsx'
+import PolaroidPanel from './panels/PolaroidPanel.jsx'
 import { useTapeDeck } from './useTapeDeck.js'
 import { getOpensAt } from './countdown.js'
 import { audio } from './audio/sfx.js'
 
 const reducedMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const DEVELOP_MS = 25000
+
+const KINDS = [
+  ['tape', 'a tape', 'tapes'],
+  ['letter', 'a letter', 'letters'],
+  ['postcard', 'a postcard', 'postcards'],
+  ['polaroid', 'a polaroid', 'polaroids'],
+]
+
+const blankLetter = () => ({ text: 'dear future us,\n\n', folded: false })
+const blankCard = () => ({ design: 'greetings', place: '', image: null, message: '', stamped: false, flipped: false })
+const blankSnap = () => ({ photo: null, caption: '', startedAt: 0, bonus: 0, shakeAt: null })
+
+function rememberedName() {
+  try {
+    return localStorage.getItem('lockbox:name') || ''
+  } catch {
+    return ''
+  }
+}
+
+function summary(items) {
+  if (!items.length) return 'nothing yet'
+  return KINDS.map(([k, one, many]) => {
+    const n = items.filter((i) => i.type === k).length
+    return n ? `${n} ${n === 1 ? one.replace(/^an? /, '') : many}` : null
+  })
+    .filter(Boolean)
+    .join(', ')
+}
 
 export default function App() {
   const opensAt = useMemo(getOpensAt, [])
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  const [mode, setMode] = useState('box') // box | tape | dropping
-  const [name, setName] = useState('')
+  const [mode, setMode] = useState('box') // box | make | dropping
+  const [kind, setKind] = useState('tape')
+  const [menu, setMenu] = useState(false)
+  const [from, setFromState] = useState(rememberedName)
   const [items, setItems] = useState([])
   const [thunk, setThunk] = useState(0)
   const deck = useTapeDeck()
+  const [letter, setLetter] = useState(blankLetter)
+  const [card, setCard] = useState(blankCard)
+  const [snap, setSnap] = useState(blankSnap)
 
-  const startTape = () => {
+  const setFrom = (v) => {
+    setFromState(v)
+    try {
+      localStorage.setItem('lockbox:name', v)
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  const getDev = () => (snap.photo ? Math.min(1, (performance.now() - snap.startedAt) / DEVELOP_MS + snap.bonus) : 0)
+
+  const start = (k) => {
     audio() // unlock audio on this tap
     deck.reset()
-    setMode('tape')
+    setLetter(blankLetter())
+    setCard(blankCard())
+    setSnap(blankSnap())
+    setKind(k)
+    setMenu(false)
+    setMode('make')
+  }
+
+  const back = () => {
+    deck.reset()
+    setMode('box')
   }
 
   const insert = () => {
-    deck.stop()
+    if (kind === 'tape') deck.stop()
     setMode('dropping')
   }
 
   const dropped = () => {
-    const tape = deck.take()
-    if (tape) setItems((list) => [...list, { type: 'tape', from: name.trim(), duration: tape.duration, blob: tape.blob }])
-    deck.reset()
+    const who = from.trim()
+    let item = { type: kind, from: who }
+    if (kind === 'tape') {
+      const tape = deck.take()
+      item = { ...item, duration: tape?.duration, blob: tape?.blob }
+      deck.reset()
+    } else if (kind === 'letter') item.text = letter.text
+    else if (kind === 'postcard') item = { ...item, design: card.design, place: card.place, message: card.message }
+    else item.caption = snap.caption
+    setItems((list) => [...list, item])
     setThunk((n) => n + 1)
     setTimeout(() => setMode('box'), 450)
   }
 
-  const count = items.length
+  const station = (k, height, rest, child) => (
+    <Station key={k} active={kind === k} mode={mode} height={height} rest={rest} onDropped={dropped}>
+      {child}
+    </Station>
+  )
+
+  const panelProps = { from, setFrom, onInsert: insert, onBack: back }
 
   return (
     <>
@@ -68,7 +144,10 @@ export default function App() {
         <Suspense fallback={null}>
           <Room />
           <Lockbox opensAt={opensAt} thunk={thunk} />
-          <TapeStation mode={mode} name={name.trim()} deck={deck} onDropped={dropped} />
+          {station('tape', CASSETTE.h, CASSETTE.d / 2 + 0.002, <Cassette name={from.trim()} getProgress={deck.getProgress} getSpin={deck.getSpin} />)}
+          {station('letter', LETTER_PACKET_H, 0.008, <Letter text={letter.text} from={from.trim()} folded={letter.folded} />)}
+          {station('postcard', POSTCARD.h, 0.004, <Postcard {...card} from={from.trim()} />)}
+          {station('polaroid', POLAROID.h, 0.005, <Polaroid photo={snap.photo} caption={snap.caption} getDev={getDev} shakeAt={snap.shakeAt} />)}
         </Suspense>
         <OrbitControls
           makeDefault
@@ -80,7 +159,7 @@ export default function App() {
           target={POSES.box.target}
           dampingFactor={0.07}
         />
-        <CameraRig pose={mode} />
+        <CameraRig pose={mode === 'make' ? kind : mode} />
         {/* barely-there handheld wobble */}
         {!reducedMotion && <CameraShake maxYaw={0.006} maxPitch={0.006} maxRoll={0.004} yawFrequency={0.4} pitchFrequency={0.5} rollFrequency={0.3} />}
         <EffectComposer multisampling={0}>
@@ -95,16 +174,32 @@ export default function App() {
           <>
             <div className="sticky count">
               inside
-              <b>{count === 0 ? 'nothing yet' : `${count} ${count === 1 ? 'thing' : 'things'}`}</b>
+              <b>{summary(items)}</b>
             </div>
             <p className="dare">poke the padlock. i dare u.</p>
-            <button className="sticky add" onClick={startTape}>
-              + record a tape
-              <small>voice note</small>
-            </button>
+            {menu ? (
+              <div className="menu" role="menu" aria-label="Put something in">
+                {KINDS.map(([k, label]) => (
+                  <button key={k} role="menuitem" className="sticky" onClick={() => start(k)}>
+                    {label}
+                  </button>
+                ))}
+                <button className="nah" onClick={() => setMenu(false)}>
+                  nah
+                </button>
+              </div>
+            ) : (
+              <button className="sticky add" onClick={() => setMenu(true)}>
+                + put something in
+                <small>tape, letter, postcard, polaroid</small>
+              </button>
+            )}
           </>
         )}
-        {mode === 'tape' && <Deck deck={deck} name={name} setName={setName} onInsert={insert} onBack={() => (deck.reset(), setMode('box'))} />}
+        {mode === 'make' && kind === 'tape' && <Deck deck={deck} name={from} setName={setFrom} onInsert={insert} onBack={back} />}
+        {mode === 'make' && kind === 'letter' && <LetterPanel letter={letter} setLetter={setLetter} {...panelProps} />}
+        {mode === 'make' && kind === 'postcard' && <PostcardPanel card={card} setCard={setCard} {...panelProps} />}
+        {mode === 'make' && kind === 'polaroid' && <PolaroidPanel snap={snap} setSnap={setSnap} getDev={getDev} {...panelProps} />}
       </div>
     </>
   )

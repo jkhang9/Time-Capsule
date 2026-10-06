@@ -5,6 +5,9 @@ import * as THREE from 'three'
 export const POSES = {
   box: { pos: [1.9, 1.9, 2.8], target: [0, 0.5, 0] },
   tape: { pos: [1.45, 0.95, 1.75], target: [1.28, 0.02, 0.92] },
+  letter: { pos: [1.42, 1.6, 1.85], target: [1.3, 0, 0.88] },
+  postcard: { pos: [1.45, 1.4, 2.0], target: [1.3, 0.02, 0.9] },
+  polaroid: { pos: [1.42, 1.15, 1.75], target: [1.29, 0.02, 0.9] },
   dropping: { pos: [1.2, 2.3, 2.1], target: [-0.15, 0.95, -0.15] },
 }
 

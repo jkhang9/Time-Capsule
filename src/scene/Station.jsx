@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import Cassette, { CASSETTE } from './Cassette.jsx'
 import { SLOT } from './Lockbox.jsx'
 import { clank, scrape } from '../audio/sfx.js'
 
-// where the cassette lies on the desk while you record
-export const DESK_SPOT = new THREE.Vector3(1.3, CASSETTE.d / 2 + 0.002, 0.95)
+// where things lie on the desk while you make them
+export const DESK_SPOT = new THREE.Vector3(1.3, 0, 0.95)
 const FLAT = new THREE.Euler(-Math.PI / 2, 0, 0.18)
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
@@ -16,28 +15,33 @@ const LIFT = 1.0
 const HOVER = 0.25
 const SINK = 0.5
 
-export default function TapeStation({ mode, name, deck, onDropped }) {
+// Holds whatever is being made on the desk, then carries it up and through the lid slot.
+// `height` is the object's upright height, `rest` how far its center sits above the desk.
+export default function Station({ active, mode, height, rest = 0.004, onDropped, children }) {
   const g = useRef()
   const anim = useRef(null)
-  const above = new THREE.Vector3(SLOT.x, SLOT.y + CASSETTE.h / 2 + 0.12, SLOT.z)
+  const start = new THREE.Vector3(DESK_SPOT.x, rest, DESK_SPOT.z)
+  const above = new THREE.Vector3(SLOT.x, SLOT.y + height / 2 + 0.12, SLOT.z)
 
   useEffect(() => {
+    if (!active || !g.current) return
     if (mode === 'dropping') anim.current = { t: 0, scraped: false }
-    if (mode === 'tape' && g.current) {
-      g.current.position.copy(DESK_SPOT)
+    if (mode === 'make') {
+      anim.current = null
+      g.current.position.copy(start)
       g.current.rotation.copy(FLAT)
     }
-  }, [mode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, active])
 
   useFrame((_, dt) => {
     const obj = g.current
-    if (!obj) return
-    if (mode !== 'dropping' || !anim.current) return
     const a = anim.current
+    if (!obj || !a || !active || mode !== 'dropping') return
     a.t += Math.min(dt, 1 / 30) // keep the motion visible even on a slow frame
     if (a.t < LIFT) {
       const k = ease(a.t / LIFT)
-      obj.position.lerpVectors(DESK_SPOT, above, k)
+      obj.position.lerpVectors(start, above, k)
       obj.position.y += Math.sin(k * Math.PI) * 0.35
       obj.rotation.set(THREE.MathUtils.lerp(FLAT.x, 0, k), 0, THREE.MathUtils.lerp(FLAT.z, 0, k))
     } else if (a.t < LIFT + HOVER) {
@@ -52,7 +56,7 @@ export default function TapeStation({ mode, name, deck, onDropped }) {
       }
       const k = easeIn((a.t - LIFT - HOVER) / SINK)
       obj.rotation.set(0, 0, 0)
-      obj.position.set(above.x, above.y - k * (CASSETTE.h + 0.16), above.z)
+      obj.position.set(above.x, above.y - k * (height + 0.16), above.z)
     } else {
       anim.current = null
       clank()
@@ -61,14 +65,8 @@ export default function TapeStation({ mode, name, deck, onDropped }) {
   })
 
   return (
-    <Cassette
-      ref={g}
-      visible={mode === 'tape' || mode === 'dropping'}
-      name={name}
-      getProgress={deck.getProgress}
-      getSpin={deck.getSpin}
-      position={DESK_SPOT.toArray()}
-      rotation={[FLAT.x, FLAT.y, FLAT.z]}
-    />
+    <group ref={g} visible={active && mode !== 'box'} position={start.toArray()} rotation={[FLAT.x, FLAT.y, FLAT.z]}>
+      {children}
+    </group>
   )
 }

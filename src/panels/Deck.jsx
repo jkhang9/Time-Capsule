@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { MAX_SECONDS } from './audio/tape.js'
+import { MAX_SECONDS } from '../audio/tape.js'
 
 const fmt = (s) => {
   const m = Math.floor(s / 60)
@@ -75,7 +75,7 @@ export default function Deck({ deck, name, setName, onInsert, onBack }) {
 
       <p className="deck-note">
         <span aria-live="polite">{note}</span>
-        <span style={{ display: 'flex', gap: 14 }}>
+        <span className="links">
           {status === 'empty' && (
             <button className="back" onClick={() => fileInput.current?.click()}>
               use a voice memo

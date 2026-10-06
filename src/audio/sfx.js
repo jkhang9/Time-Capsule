@@ -141,3 +141,56 @@ export function rattle() {
     n.start(t)
   }
 }
+
+// paper being folded or handled: a scatter of tiny crackles
+export function crinkle(seconds = 0.35) {
+  const c = audio()
+  const t0 = c.currentTime
+  const count = Math.floor(seconds * 70)
+  for (let i = 0; i < count; i++) {
+    const t = t0 + Math.random() * seconds
+    const n = c.createBufferSource()
+    n.buffer = noise(c, 0.1)
+    const hp = c.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 1800 + Math.random() * 3000
+    n.connect(hp).connect(env(c, t, 0.05 + Math.random() * 0.12, 0.006 + Math.random() * 0.02)).connect(c.destination)
+    n.start(t)
+    n.stop(t + 0.05)
+  }
+}
+
+// rubber stamp hitting a card on a desk
+export function thump() {
+  const c = audio()
+  const t = c.currentTime
+  const o = c.createOscillator()
+  o.frequency.setValueAtTime(95, t)
+  o.frequency.exponentialRampToValueAtTime(38, t + 0.12)
+  o.connect(env(c, t, 0.6, 0.16)).connect(c.destination)
+  o.start(t)
+  o.stop(t + 0.18)
+  const n = c.createBufferSource()
+  n.buffer = noise(c, 0.1)
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 700
+  n.connect(lp).connect(env(c, t, 0.4, 0.06)).connect(c.destination)
+  n.start(t)
+}
+
+// flapping a polaroid back and forth
+export function flap() {
+  const c = audio()
+  for (let i = 0; i < 4; i++) {
+    const t = c.currentTime + i * 0.09
+    const n = c.createBufferSource()
+    n.buffer = noise(c, 0.1)
+    const bp = c.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 900
+    bp.Q.value = 0.8
+    n.connect(bp).connect(env(c, t, 0.18, 0.06)).connect(c.destination)
+    n.start(t)
+  }
+}

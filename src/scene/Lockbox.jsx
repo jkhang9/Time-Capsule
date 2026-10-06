@@ -12,7 +12,7 @@ const BOX_Y = 0.5
 const LID_TOP = 0.652
 
 // deposit slot on the lid, in world coordinates (slot runs along x)
-export const SLOT = { x: -0.32, y: BOX_Y + LID_TOP, z: -0.3 }
+export const SLOT = { x: -0.38, y: BOX_Y + LID_TOP, z: -0.3 }
 
 export default function Lockbox({ opensAt, thunk = 0 }) {
   const group = useRef()
@@ -93,10 +93,10 @@ export default function Lockbox({ opensAt, thunk = 0 }) {
       {/* deposit slot: things go in, nothing comes out */}
       <group position={[SLOT.x, LID_TOP, SLOT.z]}>
         <mesh material={steel} castShadow receiveShadow>
-          <boxGeometry args={[0.62, 0.014, 0.13]} />
+          <boxGeometry args={[0.86, 0.014, 0.13]} />
         </mesh>
         <mesh position={[0, 0.0075, 0]}>
-          <boxGeometry args={[0.56, 0.002, 0.05]} />
+          <boxGeometry args={[0.8, 0.002, 0.05]} />
           <meshBasicMaterial color="#070504" />
         </mesh>
       </group>
@@ -120,7 +120,7 @@ export default function Lockbox({ opensAt, thunk = 0 }) {
       </mesh>
       <Padlock position={[0, 0.17, 0.6]} opensAt={opensAt} onEarly={early} />
       {/* countdown, taped to the lid */}
-      <LedTimer position={[0.3, 0.68, -0.2]} rotation={[0, -0.1, 0]} opensAt={opensAt} complaint={complaint} />
+      <LedTimer position={[0.38, 0.68, -0.2]} rotation={[0, -0.1, 0]} opensAt={opensAt} complaint={complaint} />
     </group>
   )
 }
